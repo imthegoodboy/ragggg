@@ -15,3 +15,11 @@ async def file_upload(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     return {"message": "File uploaded successfully","filename": file.filename}
+
+
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="127.0.0.1", port=8000)
