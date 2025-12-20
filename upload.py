@@ -12,3 +12,6 @@ async def save_file(file: UploadFile) -> str:
         while chunk := await file.read(CHUNK_SIZE):
             await f.write(chunk)
     return filepath
+
+
+    
