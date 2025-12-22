@@ -1,19 +1,42 @@
-from fastapi import FastAPI, UploadFile, File,status,HTTPException
-from typing import Annotated
-from upload import save_file
+# main.py
+from fastapi import (
+    FastAPI,
+    Request,
+    Body,
+    Depends,
+    HTTPException,
+    status,
+)
+from dependencies import get_rag_content
+from model import TextModelRequest, TextModelResponse, models, generate_text
 
 app = FastAPI()
-@app.post("/upload")
-async def file_upload(
-    file:Annotated[UploadFile, File(description="Uploaded PDF documents")]
-):
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are allowed")
-    try:
-        await save_file(file)
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    return {"message": "File uploaded successfully","filename": file.filename}
 
- 
+@app.post("/generate/text", response_model_exclude_defaults=True)
+async def serve_text_to_text_controller(
+    request: Request,
+    body: TextModelRequest = Body(...),
+    rag_content: str = Depends(get_rag_content),
+) -> TextModelResponse:
+    # 1. Validate model
+    if body.model not in models:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid model selected",
+        )
+
+    # 2. Augment user prompt with RAG context
+    final_prompt = body.prompt + "\n\n" + rag_content
+
+    # 3. Generate response using LLM
+    output = generate_text(
+        models[body.model],
+        final_prompt,
+        body.temperature,
+    )
+
+    return TextModelResponse(
+        content=output,
+        ip=request.client.host,
+    )
